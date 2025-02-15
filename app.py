@@ -30,6 +30,11 @@ class User(db.Model):
 		}
 
 # CLI Commands
+@cli.command('run')
+def run_app():
+	"""Run the Flask application."""
+	app.run(host='0.0.0.0', port=int(environ.get('PORT', 5000)), debug=environ.get('DEBUG', False))
+
 @cli.command('init-db')
 def init_db():
 	"""Initialize the database."""

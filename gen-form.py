@@ -44,31 +44,33 @@ def generate_form():
                 <form class="needs-validation" novalidate>'''
 
         # Find inputs for this element from the base elements
-        base_elements = base_root.findall(f".//xs:element[@name='{name}']", ns)
-        for base_elem in base_elements:
-            # Discover the type of the element
-            type_name = base_elem.get('type', '')
-            if type_name:
-                type_def = types_root.find(f".//xs:simpleType[@name='{type_name}']", ns)
+        type_name = elem.get('type', '')
+        if type_name:
+            base_elements = base_root.findall(f".//xs:element[@type='{type_name}']", ns)
+            for base_elem in base_elements:
+                # Discover the type of the element
+                type_name = base_elem.get('type', '')
+                if type_name:
+                    type_def = types_root.find(f".//xs:simpleType[@name='{type_name}']", ns)
 
-                if type_def is not None:
-                    input_type = "text"  # default
-                    if "Date" in type_name:
-                        input_type = "date"
-                    elif "Boolean" in type_name:
-                        input_type = "checkbox"
-                    elif "Number" in type_name or "Integer" in type_name:
-                        input_type = "number"
+                    if type_def is not None:
+                        input_type = "text"  # default
+                        if "Date" in type_name:
+                            input_type = "date"
+                        elif "Boolean" in type_name:
+                            input_type = "checkbox"
+                        elif "Number" in type_name or "Integer" in type_name:
+                            input_type = "number"
 
-                    panels_html += f'''
-                    <div class="mb-3">
-                        <label for="{name}" class="form-label">{name}</label>
-                        <input type="{input_type}" class="form-control" 
-                               id="{name}" name="{name}" required>
-                        <div class="invalid-feedback">
-                            Please provide a valid {name}.
-                        </div>
-                    </div>'''
+                        panels_html += f'''
+                        <div class="mb-3">
+                            <label for="{base_elem.get('name')}" class="form-label">{base_elem.get('name')}</label>
+                            <input type="{input_type}" class="form-control" 
+                                   id="{base_elem.get('name')}" name="{base_elem.get('name')}" required>
+                            <div class="invalid-feedback">
+                                Please provide a valid {base_elem.get('name')}.
+                            </div>
+                        </div>'''
 
         panels_html += '''
                     <button type="submit" class="btn btn-primary">Submit</button>

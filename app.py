@@ -1,55 +1,83 @@
-from flask import Flask
-from flask.cli import FlaskGroup
-from flask_sqlalchemy import SQLAlchemy
-from os import environ
-from datetime import datetime
+def generate_hpxml_form():
+	# Function to convert camelCase/PascalCase to space-separated words
+	def format_label(name):
+		formatted = ''
+		for char in name:
+			if char.isupper() and formatted:
+				formatted += ' '
+			formatted += char
+		return formatted
 
-app = Flask(__name__)
+	# Function to generate HTML for a simple type
+	def generate_simple_input(element_name, type_info):
+		if 'enumeration' in str(type_info):
+			# Generate select dropdown for enumerated types
+			html = f'<label for="{element_name}">{format_label(element_name)}</label>\n'
+			html += f'<select id="{element_name}">\n'
+			# Add options based on enumeration values
+			for value in type_info.findall('.//xs:enumeration', {'xs': 'http://www.w3.org/2001/XMLSchema'}):
+				val = value.get('value')
+				html += f'\t<option value="{val}">{format_label(val)}</option>\n'
+			html += '</select>\n'
+			return html
+		elif 'integer' in str(type_info) or 'double' in str(type_info):
+			# Generate number input for numeric types
+			return f'<label for="{element_name}">{format_label(element_name)}</label>\n<input type="number" id="{element_name}" />\n'
+		else:
+			# Generate text input for other types
+			return f'<label for="{element_name}">{format_label(element_name)}</label>\n<input type="text" id="{element_name}" />\n'
 
-# Config from environment variables
-app.config['SECRET_KEY'] = environ.get('SECRET_KEY')
-app.config['SQLALCHEMY_DATABASE_URI'] = environ.get('DATABASE_URL')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+	# Function to generate HTML for a complex type
+	def generate_complex_input(element_name, type_info):
+		html = f'<div class="section-header">{format_label(element_name)}</div>\n'
+		html += '<div class="form-group">\n'
+		
+		# Process each element in the complex type
+		for child in type_info.findall('.//xs:element', {'xs': 'http://www.w3.org/2001/XMLSchema'}):
+			child_name = child.get('name')
+			if child_name:
+				if 'type' in child.attrib:
+					child_type = child.get('type')
+					html += generate_simple_input(child_name, child_type)
+				else:
+					# Handle complex child elements recursively
+					complex_content = child.find('.//xs:complexContent', {'xs': 'http://www.w3.org/2001/XMLSchema'})
+					if complex_content is not None:
+						html += generate_complex_input(child_name, complex_content)
 
-db = SQLAlchemy(app)
-cli = FlaskGroup(app)
+		html += '</div>\n'
+		return html
 
-# User model example
-class User(db.Model):
-	id = db.Column(db.Integer, primary_key=True)
-	username = db.Column(db.String(80), unique=True, nullable=False)
-	password = db.Column(db.String(120), nullable=False)
-	created_at = db.Column(db.DateTime, default=datetime.utcnow)
+	# Main HTML generation
+	html_output = ''
+	
+	# Process root elements
+	for element in root.findall('.//xs:element', {'xs': 'http://www.w3.org/2001/XMLSchema'}):
+		element_name = element.get('name')
+		if element_name:
+			complex_type = element.find('.//xs:complexType', {'xs': 'http://www.w3.org/2001/XMLSchema'})
+			if complex_type is not None:
+				html_output += generate_complex_input(element_name, complex_type)
+			else:
+				html_output += generate_simple_input(element_name, element)
 
-	@property
-	def serialize(self):
-	  return {
-			'id': self.id,
-			'username': self.username,
-			'created_at': self.created_at.isoformat()
-		}
+	return html_output
 
-# CLI Commands
-@cli.command('run')
-def run_app():
-	"""Run the Flask application."""
-	app.run(host='0.0.0.0', port=int(environ.get('PORT', 5000)), debug=environ.get('DEBUG', False))
-
-@cli.command('init-db')
-def init_db():
-	"""Initialize the database."""
-	db.create_all()
-	print('Database initialized!')
-
-@cli.command('create-user')
-def create_user():
-	"""Create a new user."""
-	username = input('Username: ')
-	password = input('Password: ')
-	user = User(username=username, password=password)
-	db.session.add(user)
-	db.session.commit()
-	print(f'User {username} created successfully!')
-
+# Usage
 if __name__ == '__main__':
-	cli()
+	import xml.etree.ElementTree as ET
+	
+	# Parse the XSD files
+	base_tree = ET.parse('HPXMLBaseElements.xsd')
+	data_tree = ET.parse('HPXMLDataTypes.xsd')
+	
+	# Combine the roots
+	root = base_tree.getroot()
+	data_root = data_tree.getroot()
+	
+	# Generate the HTML form
+	html_form = generate_hpxml_form()
+	
+	# Write to file
+	with open('hpxml_form.html', 'w') as f:
+		f.write(html_form)

@@ -1,7 +1,7 @@
 from jinja2 import Template
 
 # Read the template file
-with open('index.html', 'r') as file:
+with open('template.html', 'r') as file:
     template_content = file.read()
 
 # Read the form HTML content

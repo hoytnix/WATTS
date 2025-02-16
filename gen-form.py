@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as ET
 import html
+from tqdm import tqdm
 
 def parse_xsd(filepath):
     tree = ET.parse(filepath)
@@ -19,7 +20,7 @@ def generate_form():
     panels_html = '<div class="tab-content p-3">\n'
     
     # Process main HPXML elements (categories)
-    for i, elem in enumerate(hpxml_root.findall(".//xs:element", ns)):
+    for i, elem in enumerate(tqdm(hpxml_root.findall(".//xs:element", ns), desc="Generating Form")):
         name = elem.get('name', '')
         if not name:
             continue

@@ -362,28 +362,28 @@
     </div>
 
     <script>
-      		const fileInput = document.getElementById('fileInput');
-      		const editorSection = document.getElementById('editorSection');
+            		const fileInput = document.getElementById('fileInput');
+            		const editorSection = document.getElementById('editorSection');
 
-      		fileInput.addEventListener('change', handleFileSelect);
+            		fileInput.addEventListener('change', handleFileSelect);
 
-      		function handleFileSelect(event) {
-      			const file = event.target.files[0];
-      			if (file) {
-      				const reader = new FileReader();
-      				reader.onload = function(e) {
-      					populateFormFromXML(e.target.result);
-      					editorSection.style.display = 'block';
-      				};
-      				reader.readAsText(file);
-      			}
-      		}
+            		function handleFileSelect(event) {
+            			const file = event.target.files[0];
+            			if (file) {
+            				const reader = new FileReader();
+            				reader.onload = function(e) {
+            					populateFormFromXML(e.target.result);
+            					editorSection.style.display = 'block';
+            				};
+            				reader.readAsText(file);
+            			}
+            		}
 
-      		function populateFormFromXML(xmlString) {
-      			const parser = new DOMParser();
-      			const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
-      			// Add code to populate form fields from XML
-      		}
+            		function populateFormFromXML(xmlString) {
+            			const parser = new DOMParser();
+            			const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
+            			// Add code to populate form fields from XML
+            		}
 
       function populateFormFromXML(xmlString) {
       	const parser = new DOMParser();
@@ -393,10 +393,13 @@
       	document.getElementById('xmlType').value = getElementValue(xmlDoc, 'XMLType');
       	document.getElementById('xmlGeneratedBy').value = getElementValue(xmlDoc, 'XMLGeneratedBy');
       	document.getElementById('createdDateTime').value = getElementValue(xmlDoc, 'CreatedDateAndTime').split('.')[0];
+      	document.getElementById('dataSource').value = getElementValue(xmlDoc, 'dataSource') || 'software';
 
       	// Customer Information
       	document.getElementById('firstName').value = getElementValue(xmlDoc, 'FirstName');
       	document.getElementById('lastName').value = getElementValue(xmlDoc, 'LastName');
+      	document.getElementById('email').value = getElementValue(xmlDoc, 'EmailAddress');
+      	document.getElementById('phone').value = getElementValue(xmlDoc, 'TelephoneNumber');
 
       	// Building Site
       	document.getElementById('address1').value = getElementValue(xmlDoc, 'Address1');
@@ -409,116 +412,155 @@
       	document.getElementById('buildingType').value = getElementValue(xmlDoc, 'ResidentialFacilityType');
       	document.getElementById('yearBuilt').value = getElementValue(xmlDoc, 'YearBuilt');
       	document.getElementById('conditionedFloorArea').value = getElementValue(xmlDoc, 'ConditionedFloorArea');
+      	document.getElementById('numberOfStories').value = getElementValue(xmlDoc, 'NumberofStoriesAboveGrade');
+      	document.getElementById('buildingVolume').value = getElementValue(xmlDoc, 'BuildingVolume');
+      	document.getElementById('numberOfResidents').value = getElementValue(xmlDoc, 'NumberofResidents');
 
       	// Air Infiltration
       	document.getElementById('blowerDoorTest').value = getElementValue(xmlDoc, 'TypeOfBlowerDoorTest');
       	document.getElementById('housePressure').value = getElementValue(xmlDoc, 'HousePressure');
       	document.getElementById('airLeakage').value = getElementValue(xmlDoc, 'AirLeakage');
+      	document.getElementById('airLeakageUnit').value = getElementValue(xmlDoc, 'UnitofMeasure');
+
+      	// Attic
+      	document.getElementById('atticType').value = getElementValue(xmlDoc, 'Vented') === 'true' ? 'vented' : 'unvented';
+      	const insulationMaterial = xmlDoc.querySelector('Attics Attic Floor Insulation Layer InsulationMaterial');
+      	if (insulationMaterial) {
+      		document.getElementById('atticInsulationType').value = insulationMaterial.firstElementChild?.tagName.toLowerCase() || 'none';
+      		document.getElementById('atticInsulationRValue').value = getElementValue(xmlDoc, 'NominalRValue');
+      	}
+
+      	// Walls
+      	document.getElementById('wallInsulation').value = getElementValue(xmlDoc.querySelector('Walls Wall Insulation Layer'), 'NominalRValue');
+      	const wallInsulationMaterial = xmlDoc.querySelector('Walls Wall Insulation Layer InsulationMaterial');
+      	if (wallInsulationMaterial) {
+      		document.getElementById('wallInsulationType').value = wallInsulationMaterial.firstElementChild?.tagName.toLowerCase() || 'none';
+      	}
+
+      	// Windows
+      	document.getElementById('windowCount').value = getElementValue(xmlDoc, 'Count');
+      	document.getElementById('windowUFactor').value = getElementValue(xmlDoc, 'UFactor');
+      	document.getElementById('windowSHGC').value = getElementValue(xmlDoc, 'SHGC');
 
       	// HVAC Systems
       	document.getElementById('heatingSystemType').value = getElementValue(xmlDoc, 'HeatingSystemType');
       	document.getElementById('heatingFuel').value = getElementValue(xmlDoc, 'HeatingSystemFuel');
-      	document.getElementById('heatingEfficiency').value = getElementValue(xmlDoc, 'Value');
+      	document.getElementById('heatingEfficiency').value = getElementValue(xmlDoc.querySelector('HeatingSystem AnnualHeatingEfficiency'), 'Value');
+      	document.getElementById('heatingCapacity').value = getElementValue(xmlDoc, 'HeatingCapacity');
 
       	document.getElementById('coolingSystemType').value = getElementValue(xmlDoc, 'CoolingSystemType');
-      	document.getElementById('coolingEfficiency').value = getElementValue(xmlDoc, 'Value');
+      	document.getElementById('coolingEfficiency').value = getElementValue(xmlDoc.querySelector('CoolingSystem AnnualCoolingEfficiency'), 'Value');
+      	document.getElementById('coolingCapacity').value = getElementValue(xmlDoc, 'CoolingCapacity');
 
       	// Water Heating
       	document.getElementById('waterHeaterType').value = getElementValue(xmlDoc, 'WaterHeaterType');
       	document.getElementById('waterHeaterFuel').value = getElementValue(xmlDoc, 'FuelType');
       	document.getElementById('waterHeaterEfficiency').value = getElementValue(xmlDoc, 'EnergyFactor');
+      	document.getElementById('tankVolume').value = getElementValue(xmlDoc, 'TankVolume');
+      	document.getElementById('recoveryEfficiency').value = getElementValue(xmlDoc, 'RecoveryEfficiency');
+
+      	// Project Status
+      	document.getElementById('eventType').value = getElementValue(xmlDoc, 'EventType');
+
+      	// Energy Savings
+      	const fuelSavings = xmlDoc.querySelector('FuelSavings');
+      	if (fuelSavings) {
+      		document.getElementById('fuelType').value = getElementValue(fuelSavings, 'Fuel');
+      		document.getElementById('totalSavings').value = getElementValue(fuelSavings, 'TotalSavings');
+      		document.getElementById('dollarSavings').value = getElementValue(fuelSavings, 'TotalDollarSavings');
+      	}
       }
 
-      function generateXML() {
-      	const xmlTemplate = `<?xml version="1.0" encoding="UTF-8"?>
-      	<HPXML xmlns="http://hpxmlonline.com/2023/09" schemaVersion="4.0">
-      		<XMLTransactionHeaderInformation>
-      			<XMLType>${document.getElementById('xmlType').value}</XMLType>
-      			<XMLGeneratedBy>${document.getElementById('xmlGeneratedBy').value}</XMLGeneratedBy>
-      			<CreatedDateAndTime>${document.getElementById('createdDateTime').value}</CreatedDateAndTime>
-      			<Transaction>create</Transaction>
-      		</XMLTransactionHeaderInformation>
-      		<Customer>
-      			<CustomerDetails>
-      				<Person>
-      					<SystemIdentifier id="customer1"/>
-      					<Name>
-      						<FirstName>${document.getElementById('firstName').value}</FirstName>
-      						<LastName>${document.getElementById('lastName').value}</LastName>
-      					</Name>
-      				</Person>
-      			</CustomerDetails>
-      		</Customer>
-      		<Building>
-      			<BuildingID id="bldg1"/>
-      			<Site>
-      				<Address>
-      					<Address1>${document.getElementById('address1').value}</Address1>
-      					<Address2>${document.getElementById('address2').value}</Address2>
-      					<CityMunicipality>${document.getElementById('city').value}</CityMunicipality>
-      					<StateCode>${document.getElementById('state').value}</StateCode>
-      					<ZipCode>${document.getElementById('zipCode').value}</ZipCode>
-      				</Address>
-      			</Site>
-      			<BuildingDetails>
-      				<BuildingSummary>
-      					<BuildingConstruction>
-      						<YearBuilt>${document.getElementById('yearBuilt').value}</YearBuilt>
-      						<ResidentialFacilityType>${document.getElementById('buildingType').value}</ResidentialFacilityType>
-      						<ConditionedFloorArea>${document.getElementById('conditionedFloorArea').value}</ConditionedFloorArea>
-      					</BuildingConstruction>
-      				</BuildingSummary>
-      				<Systems>
-      					<HVAC>
-      						<HVACPlant>
-      							<HeatingSystem>
-      								<HeatingSystemType>${document.getElementById('heatingSystemType').value}</HeatingSystemType>
-      								<HeatingSystemFuel>${document.getElementById('heatingFuel').value}</HeatingSystemFuel>
-      								<AnnualHeatingEfficiency>
-      									<Units>AFUE</Units>
-      									<Value>${document.getElementById('heatingEfficiency').value}</Value>
-      								</AnnualHeatingEfficiency>
-      							</HeatingSystem>
-      							<CoolingSystem>
-      								<CoolingSystemType>${document.getElementById('coolingSystemType').value}</CoolingSystemType>
-      								<AnnualCoolingEfficiency>
-      									<Units>SEER</Units>
-      									<Value>${document.getElementById('coolingEfficiency').value}</Value>
-      								</AnnualCoolingEfficiency>
-      							</CoolingSystem>
-      						</HVACPlant>
-      					</HVAC>
-      					<WaterHeating>
-      						<WaterHeatingSystem>
-      							<SystemIdentifier id="dhw1"/>
-      							<WaterHeaterType>${document.getElementById('waterHeaterType').value}</WaterHeaterType>
-      							<FuelType>${document.getElementById('waterHeaterFuel').value}</FuelType>
-      							<EnergyFactor>${document.getElementById('waterHeaterEfficiency').value}</EnergyFactor>
-      						</WaterHeatingSystem>
-      					</WaterHeating>
-      				</Systems>
-      			</BuildingDetails>
-      		</Building>
-      	</HPXML>`;
+            function generateXML() {
+            	const xmlTemplate = `<?xml version="1.0" encoding="UTF-8"?>
+            	<HPXML xmlns="http://hpxmlonline.com/2023/09" schemaVersion="4.0">
+            		<XMLTransactionHeaderInformation>
+            			<XMLType>${document.getElementById('xmlType').value}</XMLType>
+            			<XMLGeneratedBy>${document.getElementById('xmlGeneratedBy').value}</XMLGeneratedBy>
+            			<CreatedDateAndTime>${document.getElementById('createdDateTime').value}</CreatedDateAndTime>
+            			<Transaction>create</Transaction>
+            		</XMLTransactionHeaderInformation>
+            		<Customer>
+            			<CustomerDetails>
+            				<Person>
+            					<SystemIdentifier id="customer1"/>
+            					<Name>
+            						<FirstName>${document.getElementById('firstName').value}</FirstName>
+            						<LastName>${document.getElementById('lastName').value}</LastName>
+            					</Name>
+            				</Person>
+            			</CustomerDetails>
+            		</Customer>
+            		<Building>
+            			<BuildingID id="bldg1"/>
+            			<Site>
+            				<Address>
+            					<Address1>${document.getElementById('address1').value}</Address1>
+            					<Address2>${document.getElementById('address2').value}</Address2>
+            					<CityMunicipality>${document.getElementById('city').value}</CityMunicipality>
+            					<StateCode>${document.getElementById('state').value}</StateCode>
+            					<ZipCode>${document.getElementById('zipCode').value}</ZipCode>
+            				</Address>
+            			</Site>
+            			<BuildingDetails>
+            				<BuildingSummary>
+            					<BuildingConstruction>
+            						<YearBuilt>${document.getElementById('yearBuilt').value}</YearBuilt>
+            						<ResidentialFacilityType>${document.getElementById('buildingType').value}</ResidentialFacilityType>
+            						<ConditionedFloorArea>${document.getElementById('conditionedFloorArea').value}</ConditionedFloorArea>
+            					</BuildingConstruction>
+            				</BuildingSummary>
+            				<Systems>
+            					<HVAC>
+            						<HVACPlant>
+            							<HeatingSystem>
+            								<HeatingSystemType>${document.getElementById('heatingSystemType').value}</HeatingSystemType>
+            								<HeatingSystemFuel>${document.getElementById('heatingFuel').value}</HeatingSystemFuel>
+            								<AnnualHeatingEfficiency>
+            									<Units>AFUE</Units>
+            									<Value>${document.getElementById('heatingEfficiency').value}</Value>
+            								</AnnualHeatingEfficiency>
+            							</HeatingSystem>
+            							<CoolingSystem>
+            								<CoolingSystemType>${document.getElementById('coolingSystemType').value}</CoolingSystemType>
+            								<AnnualCoolingEfficiency>
+            									<Units>SEER</Units>
+            									<Value>${document.getElementById('coolingEfficiency').value}</Value>
+            								</AnnualCoolingEfficiency>
+            							</CoolingSystem>
+            						</HVACPlant>
+            					</HVAC>
+            					<WaterHeating>
+            						<WaterHeatingSystem>
+            							<SystemIdentifier id="dhw1"/>
+            							<WaterHeaterType>${document.getElementById('waterHeaterType').value}</WaterHeaterType>
+            							<FuelType>${document.getElementById('waterHeaterFuel').value}</FuelType>
+            							<EnergyFactor>${document.getElementById('waterHeaterEfficiency').value}</EnergyFactor>
+            						</WaterHeatingSystem>
+            					</WaterHeating>
+            				</Systems>
+            			</BuildingDetails>
+            		</Building>
+            	</HPXML>`;
 
-      	return xmlTemplate;
-      }
+            	return xmlTemplate;
+            }
 
-      function getElementValue(xmlDoc, tagName) {
-      	const element = xmlDoc.getElementsByTagName(tagName)[0];
-      	return element ? element.textContent : '';
-      }
+            function getElementValue(xmlDoc, tagName) {
+            	const element = xmlDoc.getElementsByTagName(tagName)[0];
+            	return element ? element.textContent : '';
+            }
 
-      		function downloadXML() {
-      			const xmlString = generateXML();
-      			const blob = new Blob([xmlString], {type: 'text/xml'});
-      			const url = window.URL.createObjectURL(blob);
-      			const a = document.createElement('a');
-      			a.href = url;
-      			a.download = 'hpxml_file.xml';
-      			a.click();
-      			window.URL.revokeObjectURL(url);
-      		}
+            		function downloadXML() {
+            			const xmlString = generateXML();
+            			const blob = new Blob([xmlString], {type: 'text/xml'});
+            			const url = window.URL.createObjectURL(blob);
+            			const a = document.createElement('a');
+            			a.href = url;
+            			a.download = 'hpxml_file.xml';
+            			a.click();
+            			window.URL.revokeObjectURL(url);
+            		}
     </script>
   </body>
 </html>

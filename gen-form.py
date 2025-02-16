@@ -46,31 +46,34 @@ def generate_form():
         # Find inputs for this element from the base elements
         type_name = elem.get('type', '')
         if type_name:
-            base_elements = base_root.findall(f".//xs:element[@type='{type_name}']", ns)
-            for base_elem in base_elements:
-                # Discover the type of the element
-                data_type = base_elem.get('type', '')
-                if data_type:
-                    type_def = types_root.find(f".//xs:simpleType[@name='{data_type}']", ns)
+            # Find complexType definition
+            type_def = base_root.find(f".//xs:complexType[@name='{type_name}']", ns)
+            if type_def is not None:
+                # Find the nested elements within the complexType
+                base_elements = type_def.findall(".//xs:element", ns)
+                for base_elem in base_elements:
+                    # Discover the type of the element
+                    data_type = base_elem.get('type', '')
+                    if data_type:
+                        type_def = types_root.find(f".//xs:simpleType[@name='{data_type}']", ns)
+                        if type_def is not None:
+                            input_type = "text"  # default
+                            if "Date" in data_type:
+                                input_type = "date"
+                            elif "Boolean" in data_type:
+                                input_type = "checkbox"
+                            elif "Number" in data_type or "Integer" in data_type:
+                                input_type = "number"
 
-                    if type_def is not None:
-                        input_type = "text"  # default
-                        if "Date" in data_type:
-                            input_type = "date"
-                        elif "Boolean" in data_type:
-                            input_type = "checkbox"
-                        elif "Number" in data_type or "Integer" in data_type:
-                            input_type = "number"
-
-                        panels_html += f'''
-                        <div class="mb-3">
-                            <label for="{base_elem.get('name')}" class="form-label">{base_elem.get('name')}</label>
-                            <input type="{input_type}" class="form-control" 
-                                   id="{base_elem.get('name')}" name="{base_elem.get('name')}" required>
-                            <div class="invalid-feedback">
-                                Please provide a valid {base_elem.get('name')}.
-                            </div>
-                        </div>'''
+                            panels_html += f'''
+                            <div class="mb-3">
+                                <label for="{base_elem.get('name')}" class="form-label">{base_elem.get('name')}</label>
+                                <input type="{input_type}" class="form-control" 
+                                       id="{base_elem.get('name')}" name="{base_elem.get('name')}" required>
+                                <div class="invalid-feedback">
+                                    Please provide a valid {base_elem.get('name')}.
+                                </div>
+                            </div>'''
 
         panels_html += '''
                     <button type="submit" class="btn btn-primary">Submit</button>

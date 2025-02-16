@@ -103,12 +103,8 @@ def generate_form():
     # Combine all HTML
     form_html = f'''
     <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-12">
-                {tabs_html}
-                {panels_html}
-            </div>
-        </div>
+        {tabs_html}
+        {panels_html}
     </div>
     '''
     

@@ -6685,16 +6685,36 @@
       fileInput.addEventListener('change', handleFileSelect);
       
       function handleFileSelect(event) {
-      	const file = event.target.files[0];
-      	if (file) {
-      		const reader = new FileReader();
-      		reader.onload = function(e) {
-      			populateFormFromXML(e.target.result);
-      			editorSection.style.display = 'block';
-      		};
-      		reader.readAsText(file);
-      	}
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            populateFormFromXML(e.target.result);
+            // Show the editor section and ensure it's visible
+            editorSection.style.display = 'block';
+            editorSection.style.visibility = 'visible';
+            editorSection.style.opacity = '1';
+            // Scroll to the editor section
+            editorSection.scrollIntoView({ behavior: 'smooth' });
+        };
+        reader.readAsText(file);
       }
+      }
+      
+      // Add CSS to ensure proper display
+      document.head.insertAdjacentHTML('beforeend', `
+      <style>
+        .editor-section {
+            transition: opacity 0.3s ease-in-out;
+            margin-top: 20px;
+        }
+        .editor-section.visible {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+      </style>
+      `);
       
       function populateFormFromXML(xmlString) {
       	const parser = new DOMParser();

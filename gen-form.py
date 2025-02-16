@@ -1,119 +1,122 @@
 import xml.etree.ElementTree as ET
-import html
+import re
 
-def parse_schema(xsd_file):
+def parse_xsd(xsd_file):
     tree = ET.parse(xsd_file)
     root = tree.getroot()
-    namespace = {'xs': 'http://www.w3.org/2001/XMLSchema'}
-    return root, namespace
+    return root
 
-def get_simple_type_info(simple_type):
-    namespace = {'xs': 'http://www.w3.org/2001/XMLSchema'}
-    restrictions = simple_type.find('.//xs:restriction', namespace)
-    if restrictions is None:
-        return "text", []
+def generate_form():
+    # Parse XSD files
+    hpxml_root = parse_xsd('HPXML.xsd')
+    base_root = parse_xsd('BaseElements.xsd')
+    types_root = parse_xsd('DataTypes.xsd')
     
-    base = restrictions.get('base', '').split(':')[-1]
-    enums = restrictions.findall('.//xs:enumeration', namespace)
+    # Extract namespace
+    ns = {'xs': 'http://www.w3.org/2001/XMLSchema'}
     
-    if enums:
-        return "select", [e.get('value') for e in enums]
-    elif base in ['string']:
-        return "text", []
-    elif base in ['integer', 'double', 'decimal']:
-        return "number", []
-    elif base in ['boolean']:
-        return "checkbox", []
-    elif base in ['date']:
-        return "date", []
-    return "text", []
-
-def generate_html():
-    # Parse all schema files
-    hpxml_root, ns = parse_schema('HPXML.xsd')
-    types_root, _ = parse_schema('DataTypes.xsd')
-    base_root, _ = parse_schema('BaseElements.xsd')
-
-    html_content = '''<!DOCTYPE html>
-<html>
-<head>
-    <title>HPXML Form</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .form-section { margin-bottom: 2rem; }
-        .card { margin-bottom: 1rem; }
-    </style>
-</head>
-<body>
-    <div class="container mt-5">
-        <h1 class="mb-4">HPXML Data Entry Form</h1>
-        <form id="hpxmlForm">'''
-
-    # Process main categories from HPXML.xsd
-    for element in hpxml_root.findall('.//xs:element', ns):
-        name = element.get('name')
-        if name and name != 'HPXML':
-            html_content += f'''
-            <div class="card form-section">
-                <div class="card-header">
-                    <h3>{name}</h3>
+    # Generate form HTML
+    form_html = '''
+    <form id="hpxml-form" class="container mt-4">
+        <div class="accordion" id="hpxmlAccordion">
+    '''
+    
+    # Process main HPXML elements (Categories)
+    hpxml_element = hpxml_root.find('.//xs:element[@name="HPXML"]', ns)
+    if hpxml_element is not None:
+        complex_type = hpxml_element.find('.//xs:sequence', ns)
+        if complex_type is not None:
+            for idx, element in enumerate(complex_type.findall('xs:element', ns)):
+                category_name = element.get('name')
+                form_html += f'''
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading{idx}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                data-bs-target="#collapse{idx}" aria-expanded="false" aria-controls="collapse{idx}">
+                            <i class="bi bi-folder me-2"></i> {category_name}
+                        </button>
+                    </h2>
+                    <div id="collapse{idx}" class="accordion-collapse collapse" 
+                         aria-labelledby="heading{idx}" data-bs-parent="#hpxmlAccordion">
+                        <div class="accordion-body">
+                '''
+                
+                # Find corresponding base element
+                base_element = base_root.find(f'.//xs:element[@name="{category_name}"]', ns)
+                if base_element is not None:
+                    complex_type = base_element.find('.//xs:sequence', ns)
+                    if complex_type is not None:
+                        form_html += '<div class="row g-3">'
+                        for field in complex_type.findall('.//xs:element', ns):
+                            field_name = field.get('name')
+                            field_type = field.get('type')
+                            
+                            # Find data type in DataTypes.xsd
+                            type_info = types_root.find(f'.//xs:simpleType[@name="{field_type}_simple"]', ns)
+                            
+                            if type_info is not None:
+                                restriction = type_info.find('.//xs:restriction', ns)
+                                if restriction is not None:
+                                    # Handle enumeration
+                                    enums = restriction.findall('xs:enumeration', ns)
+                                    if enums:
+                                        form_html += f'''
+                                        <div class="col-md-6">
+                                            <label for="{field_name}" class="form-label">{field_name}</label>
+                                            <select class="form-select" id="{field_name}" name="{field_name}">
+                                                <option value="">Select {field_name}</option>
+                                        '''
+                                        for enum in enums:
+                                            value = enum.get('value')
+                                            form_html += f'<option value="{value}">{value}</option>'
+                                        form_html += '''
+                                            </select>
+                                        </div>
+                                        '''
+                                    else:
+                                        # Handle other types
+                                        base = restriction.get('base')
+                                        input_type = 'text'
+                                        if base == 'xs:integer' or base == 'xs:double':
+                                            input_type = 'number'
+                                        elif base == 'xs:date':
+                                            input_type = 'date'
+                                        elif base == 'xs:boolean':
+                                            input_type = 'checkbox'
+                                            
+                                        form_html += f'''
+                                        <div class="col-md-6">
+                                            <label for="{field_name}" class="form-label">{field_name}</label>
+                                            <input type="{input_type}" class="form-control" id="{field_name}" name="{field_name}">
+                                        </div>
+                                        '''
+                            else:
+                                # Default to text input if type not found
+                                form_html += f'''
+                                <div class="col-md-6">
+                                    <label for="{field_name}" class="form-label">{field_name}</label>
+                                    <input type="text" class="form-control" id="{field_name}" name="{field_name}">
+                                </div>
+                                '''
+                        form_html += '</div>'
+                
+                form_html += '''
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">'''
-            
-            # Process type definitions from DataTypes.xsd
-            complex_type = element.find('.//xs:complexType', ns)
-            if complex_type is not None:
-                for sub_element in complex_type.findall('.//xs:element', ns):
-                    sub_name = sub_element.get('name', '')
-                    type_name = sub_element.get('type', '').split(':')[-1]
-                    
-                    # Find corresponding simple type in DataTypes.xsd
-                    simple_type = types_root.find(f'.//xs:simpleType[@name="{type_name}_simple"]', ns)
-                    if simple_type is not None:
-                        input_type, options = get_simple_type_info(simple_type)
-                        
-                        if input_type == "select":
-                            html_content += f'''
-                            <div class="mb-3">
-                                <label for="{html.escape(sub_name)}" class="form-label">{html.escape(sub_name)}</label>
-                                <select class="form-select" id="{html.escape(sub_name)}" name="{html.escape(sub_name)}">
-                                    <option value="">Select...</option>'''
-                            for option in options:
-                                html_content += f'''
-                                    <option value="{html.escape(option)}">{html.escape(option)}</option>'''
-                            html_content += '''
-                                </select>
-                            </div>'''
-                        else:
-                            html_content += f'''
-                            <div class="mb-3">
-                                <label for="{html.escape(sub_name)}" class="form-label">{html.escape(sub_name)}</label>
-                                <input type="{input_type}" class="form-control" id="{html.escape(sub_name)}" name="{html.escape(sub_name)}">
-                            </div>'''
-            
-            html_content += '''
-                </div>
-            </div>'''
-
-    html_content += '''
-            <button type="submit" class="btn btn-primary">Generate HPXML</button>
-        </form>
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.getElementById('hpxmlForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const formData = new FormData(this);
-            const data = Object.fromEntries(formData.entries());
-            console.log('Form data:', data);
-            // Here you can add code to generate HPXML
-        });
-    </script>
-</body>
-</html>'''
-
+                '''
+    
+    form_html += '''
+        </div>
+        <div class="mt-4 mb-4">
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </div>
+    </form>
+    '''
+    
+    # Write to output file
     with open('form.html', 'w+') as f:
-        f.write(html_content)
+        f.write(form_html)
 
 if __name__ == '__main__':
-    generate_html()
+    generate_form()

@@ -8,27 +8,27 @@ def parse_xsd(filepath):
 
 def generate_form():
     # Parse the XSD files
-    hpxml_root = parse_xsd('HPXML.xsd')
+    hpxml_root = parse_xsd('HPXMLMerged.xsd')
     data_types_root = parse_xsd('DataTypes.xsd')
     base_elements_root = parse_xsd('BaseElements.xsd')
-    
+
     # Extract namespaces
     ns = {'xs': 'http://www.w3.org/2001/XMLSchema'}
-    
+
     # Generate tabs for main categories
     tabs_html = '<ul class="nav nav-tabs" role="tablist">\n'
     panels_html = '<div class="tab-content p-3">\n'
-    
+
     # Process main HPXML elements (categories)
     for i, elem in enumerate(tqdm(hpxml_root.findall(".//xs:element", ns), desc="Generating Form")):
         name = elem.get('name', '')
-        if not name:
+        if not name or name == "HPXML":
             continue
-            
+
         # Generate tab
         active = 'active' if i == 0 else ''
         tab_id = f"tab-{name}"
-        
+
         tabs_html += f'''
         <li class="nav-item" role="presentation">
             <button class="nav-link {active}" id="{tab_id}" data-bs-toggle="tab" 
@@ -36,7 +36,7 @@ def generate_form():
                 {name}
             </button>
         </li>'''
-        
+
         # Generate panel content
         panels_html += f'''
         <div class="tab-pane fade {'show ' if i == 0 else ''}{active}" 
@@ -44,62 +44,19 @@ def generate_form():
             <div class="mb-3">
                 <form class="needs-validation" novalidate>'''
 
-        # Find complexType definition for this element
-        type_name = elem.tag.split('}')[1]  # Get the tag name without the namespace
-        if type_name:
-            # Find complexType definition in hpxml_root
-            # Find the nested elements within the complexType
-            for type_def in hpxml_root.findall(f".//xs:complexType[@name='{type_name}']", ns):
-                panels_html += process_complexType(type_def, ns, data_types_root)
+        # Process nested elements in each category
+        for type_def in hpxml_root.findall(f".//xs:complexType[@name='{name}']", ns):
+            panels_html += process_complexType(type_def, ns, data_types_root)
 
         panels_html += '''
                     <button type="submit" class="btn btn-primary">Submit</button>
                 </form>
             </div>
         </div>'''
-    
-    # Process elements from BaseElements.xsd
-    for i, elem in enumerate(tqdm(base_elements_root.findall(".//xs:element", ns), desc="Generating Form")):
-        name = elem.get('name', '')
-        if not name:
-            continue
-            
-        # Generate tab
-        active = 'active' if i == 0 else ''
-        tab_id = f"tab-{name}"
-        
-        tabs_html += f'''
-        <li class="nav-item" role="presentation">
-            <button class="nav-link {active}" id="{tab_id}" data-bs-toggle="tab" 
-                    data-bs-target="#panel-{name}" type="button" role="tab">
-                {name}
-            </button>
-        </li>'''
-        
-        # Generate panel content
-        panels_html += f'''
-        <div class="tab-pane fade {'show ' if i == 0 else ''}{active}" 
-             id="panel-{name}" role="tabpanel" tabindex="0">
-            <div class="mb-3">
-                <form class="needs-validation" novalidate>'''
 
-        # Find complexType definition for this element
-        type_name = elem.tag.split('}')[1]  # Get the tag name without the namespace
-        if type_name:
-            # Find complexType definition in hpxml_root
-            # Find the nested elements within the complexType
-            for type_def in base_elements_root.findall(f".//xs:complexType[@name='{type_name}']", ns):
-                panels_html += process_complexType(type_def, ns, data_types_root)
-
-        panels_html += '''
-                    <button type="submit" class="btn btn-primary">Submit</button>
-                </form>
-            </div>
-        </div>'''
-    
     tabs_html += '</ul>\n'
     panels_html += '</div>\n'
-    
+
     # Combine all HTML
     form_html = f'''
     <div class="container mt-4">
@@ -107,7 +64,7 @@ def generate_form():
         {panels_html}
     </div>
     '''
-    
+
     return form_html
 
 def process_complexType(type_def, ns, data_types_root):

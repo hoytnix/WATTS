@@ -49,17 +49,17 @@ def generate_form():
             base_elements = base_root.findall(f".//xs:element[@type='{type_name}']", ns)
             for base_elem in base_elements:
                 # Discover the type of the element
-                type_name = base_elem.get('type', '')
-                if type_name:
-                    type_def = types_root.find(f".//xs:simpleType[@name='{type_name}']", ns)
+                data_type = base_elem.get('type', '')
+                if data_type:
+                    type_def = types_root.find(f".//xs:simpleType[@name='{data_type}']", ns)
 
                     if type_def is not None:
                         input_type = "text"  # default
-                        if "Date" in type_name:
+                        if "Date" in data_type:
                             input_type = "date"
-                        elif "Boolean" in type_name:
+                        elif "Boolean" in data_type:
                             input_type = "checkbox"
-                        elif "Number" in type_name or "Integer" in type_name:
+                        elif "Number" in data_type or "Integer" in data_type:
                             input_type = "number"
 
                         panels_html += f'''

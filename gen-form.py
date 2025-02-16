@@ -1,112 +1,139 @@
-import requests
-import random
-import logging
-from typing import List, Optional
-from tqdm import tqdm
 import xml.etree.ElementTree as ET
+from typing import Dict
+import os
 
-# Configure logging
-logging.basicConfig(
-	level=logging.INFO,
-	format='%(asctime)s - %(levelname)s - %(message)s'
-)
+def parse_xsd_schema(file_path: str, namespace: str) -> Dict:
+    tree = ET.parse(file_path)
+    root = tree.getroot()
+    schema = {}
+    
+    ns = {'xs': 'http://www.w3.org/2001/XMLSchema', 
+          'ns': namespace}
+    
+    for complex_type in root.findall('.//xs:complexType', ns):
+        name = complex_type.get('name', '')
+        if name:
+            schema[name] = {
+                'type': 'complex',
+                'elements': []
+            }
+            
+            for seq in complex_type.findall('.//xs:sequence', ns):
+                for elem in seq.findall('xs:element', ns):
+                    elem_info = {
+                        'name': elem.get('name', ''),
+                        'type': elem.get('type', ''),
+                        'minOccurs': elem.get('minOccurs', '1'),
+                        'maxOccurs': elem.get('maxOccurs', '1')
+                    }
+                    schema[name]['elements'].append(elem_info)
+    
+    return schema
 
-def generate_hpxml_form(root: ET.Element) -> str:
-	logging.info('Starting HPXML form generation')
-	
-	def format_label(name: str) -> str:
-		"""Convert camelCase/PascalCase to space-separated words."""
-		formatted = ''
-		for char in name:
-			if char.isupper() and formatted:
-				formatted += ' '
-			formatted += char
-		return formatted
+def generate_html():
+    hpxml_schema = parse_xsd_schema('HPXML.xsd', 'http://hpxmlonline.com/2023/09')
+    datatypes_schema = parse_xsd_schema('DataTypes.xsd', 'http://hpxmlonline.com/2023/09')
+    elements_schema = parse_xsd_schema('BaseElements.xsd', 'http://hpxmlonline.com/2023/09')
+    
+    html_content = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HPXML Form Generator</title>
+    <style>
+        .tab { display: none; }
+        .tab.active { display: block; }
+        .tab-buttons button { padding: 10px; margin: 5px; }
+        .form-group { margin: 10px 0; }
+        label { display: block; margin-bottom: 5px; }
+        body { padding: 20px; font-family: Arial, sans-serif; }
+    </style>
+</head>
+<body>
+    <h1>HPXML Form Generator</h1>
+    
+    <div class="tab-buttons">
+"""
+    
+    # Add tab buttons
+    for category in hpxml_schema:
+        html_content += f'        <button onclick="showTab(\'{category}\')">{category}</button>\n'
+    
+    html_content += """    </div>
 
-	def generate_data_type_input(element_name: str, type_info: ET.Element) -> str:
-		logging.debug(f'Generating data type input for {element_name}')
-		html = '<div class="data-type-group">'
-		html += f'<div class="data-type-header">{format_label(element_name)}</div>'
+    <form id="hpxmlForm" onsubmit="generateXML(event)">
+"""
+    
+    # Add form fields
+    for category, details in hpxml_schema.items():
+        html_content += f'        <div id="{category}" class="tab">\n'
+        html_content += f'            <h2>{category}</h2>\n'
+        if details.get('elements'):
+            for elem in details['elements']:
+                html_content += f'            <div class="form-group">\n'
+                html_content += f'                <label for="{elem["name"]}">{elem["name"]}</label>\n'
+                elem_type = elem['type'].replace('ns:', '')
+                if elem_type in datatypes_schema:
+                    if 'string' in str(datatypes_schema[elem_type]):
+                        html_content += f'                <input type="text" id="{elem["name"]}" name="{elem["name"]}">\n'
+                    elif 'integer' in str(datatypes_schema[elem_type]):
+                        html_content += f'                <input type="number" id="{elem["name"]}" name="{elem["name"]}" step="1">\n'
+                    elif 'double' in str(datatypes_schema[elem_type]):
+                        html_content += f'                <input type="number" id="{elem["name"]}" name="{elem["name"]}" step="0.01">\n'
+                    elif 'boolean' in str(datatypes_schema[elem_type]):
+                        html_content += f'                <input type="checkbox" id="{elem["name"]}" name="{elem["name"]}">\n'
+                    elif 'date' in str(datatypes_schema[elem_type]):
+                        html_content += f'                <input type="date" id="{elem["name"]}" name="{elem["name"]}">\n'
+                    else:
+                        html_content += f'                <input type="text" id="{elem["name"]}" name="{elem["name"]}">\n'
+                html_content += '            </div>\n'
+        html_content += '        </div>\n'
+    
+    html_content += """        <button type="submit">Generate HPXML</button>
+    </form>
 
-		# Handle enumerations
-		enums = type_info.findall('.//xs:enumeration', {'xs': 'http://www.w3.org/2001/XMLSchema'})
-		if enums:
-			html += f'<select id="{element_name}" name="{element_name}">'
-			for enum in enums:
-				val = enum.get('value')
-				html += f'<option value="{val}">{format_label(val)}</option>'
-			html += '</select>'
-		else:
-			# Handle other data types
-			input_type = "text"
-			if 'integer' in type_info.get('name', '') or 'double' in type_info.get('name', ''):
-				input_type = "number"
-			html += f'<input type="{input_type}" id="{element_name}" name="{element_name}" />'
+    <script>
+        function showTab(tabId) {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(tabId).classList.add('active');
+        }
+        
+        function generateXML(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            let xmlContent = '<?xml version="1.0" encoding="UTF-8"?>\n<HPXML xmlns="http://hpxmlonline.com/2023/09">\n';
+            
+            for (let [name, value] of formData.entries()) {
+                if (value) {
+                    xmlContent += `  <${name}>${value}</${name}>\n`;
+                }
+            }
+            
+            xmlContent += '</HPXML>';
+            
+            const blob = new Blob([xmlContent], { type: 'text/xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'output.xml';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        // Show first tab by default
+        document.querySelector('.tab').classList.add('active');
+    </script>
+</body>
+</html>
+"""
+    
+    with open('form.html', 'w+') as f:
+        f.write(html_content)
 
-		html += '</div>'
-		return html
-
-	def generate_complex_type(type_name: str, complex_type: ET.Element) -> str:
-		logging.debug(f'Generating complex type for {type_name}')
-		html = '<div class="complex-type-group">'
-		html += f'<div class="complex-type-header">{format_label(type_name)}</div>'
-
-		# Process sequence elements
-		sequence = complex_type.find('.//xs:sequence', {'xs': 'http://www.w3.org/2001/XMLSchema'})
-		if sequence is not None:
-			for element in sequence.findall('.//xs:element', {'xs': 'http://www.w3.org/2001/XMLSchema'}):
-				element_name = element.get('name')
-				element_type = element.get('type')
-				
-				if element_name and element_type:
-					# Find the type definition
-					type_def = root.find(f".//xs:simpleType[@name='{element_type}']", 
-									   {'xs': 'http://www.w3.org/2001/XMLSchema'})
-					if type_def is not None:
-						html += generate_data_type_input(element_name, type_def)
-					else:
-						# Default to text input if type not found
-						html += '<div class="form-group">'
-						html += f'<label for="{element_name}">{format_label(element_name)}</label>'
-						html += f'<input type="text" id="{element_name}" name="{element_name}" />'
-						html += '</div>'
-
-		html += '</div>'
-		return html
-
-	# Main form generation
-	html_output = '<form id="hpxml-form">'
-
-	# Process complex types
-	complex_types = root.findall('.//xs:complexType', {'xs': 'http://www.w3.org/2001/XMLSchema'})
-	for complex_type in tqdm(complex_types, desc='Processing complex types'):
-		type_name = complex_type.get('name')
-		if type_name:
-			html_output += generate_complex_type(type_name, complex_type)
-
-	html_output += '</form>'
-	logging.info('HPXML form generation completed')
-	return html_output
-
-if __name__ == '__main__':
-	logging.info('Starting HPXML form generation script')
-	
-	try:
-		# Parse the XSD file
-		logging.info('Parsing HPXMLMerged.xsd')
-		tree = ET.parse('HPXMLMerged.xsd')
-		root = tree.getroot()
-		
-		# Generate the HTML form
-		html_form = generate_hpxml_form(root)
-		
-		# Write to file
-		logging.info('Writing output to hpxml_form.html')
-		with open('hpxml_form.html', 'w') as f:
-			f.write(html_form)
-		
-		logging.info('Script completed successfully')
-		
-	except Exception as e:
-		logging.error(f'An error occurred: {str(e)}')
-		raise
+if __name__ == "__main__":
+    generate_html()
+    print("Form generated as form.html")

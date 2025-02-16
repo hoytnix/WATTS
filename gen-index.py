@@ -5,7 +5,7 @@ with open('index.html', 'r') as file:
     template_content = file.read()
 
 # Read the form HTML content
-with open('hpxml_form.html', 'r') as file:
+with open('form.html', 'r') as file:
     form_html = file.read()
 
 # Create Jinja template

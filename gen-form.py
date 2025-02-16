@@ -8,8 +8,8 @@ def parse_xsd(filepath):
 def generate_form():
     # Parse the XSD files
     hpxml_root = parse_xsd('HPXML.xsd')
-    # types_root = parse_xsd('DataTypes.xsd') # No longer needed
-    # base_root = parse_xsd('BaseElements.xsd') # No longer needed
+    data_types_root = parse_xsd('DataTypes.xsd')
+    base_elements_root = parse_xsd('BaseElements.xsd')
     
     # Extract namespaces
     ns = {'xs': 'http://www.w3.org/2001/XMLSchema'}
@@ -47,7 +47,7 @@ def generate_form():
         type_name = elem.get('type', '')
         if type_name:
             # Find complexType definition
-            type_def = hpxml_root.find(f".//xs:complexType[@name='{type_name}']", ns)
+            type_def = base_elements_root.find(f".//xs:complexType[@name='{type_name}']", ns)
             if type_def is not None:
                 # Find the nested elements within the complexType
                 base_elements = type_def.findall(".//xs:element", ns)
@@ -55,7 +55,7 @@ def generate_form():
                     # Discover the type of the element
                     data_type = base_elem.get('type', '')
                     if data_type:
-                        type_def = hpxml_root.find(f".//xs:simpleType[@name='{data_type}']", ns)
+                        type_def = data_types_root.find(f".//xs:simpleType[@name='{data_type}']", ns)
                         if type_def is not None:
                             input_type = "text"  # default
                             if "Date" in data_type:

@@ -44,7 +44,7 @@ def generate_form():
                 <form class="needs-validation" novalidate>'''
 
         # Find inputs for this element from the base elements
-        type_name = elem.get('type', '')
+        type_name = elem.tag.split('}')[1]  # Get the tag name without the namespace
         if type_name:
             # Find complexType definition
             type_def = base_elements_root.find(f".//xs:complexType[@name='{type_name}']", ns)

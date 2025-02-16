@@ -120,6 +120,6 @@ if __name__ == '__main__':
 		
 		logging.info('Script completed successfully')
 		
-except Exception as e:
+        except Exception as e:
 		logging.error(f'An error occurred: {str(e)}')
 		raise

@@ -1,139 +1,119 @@
 import xml.etree.ElementTree as ET
-from typing import Dict
-import os
+import html
 
-def parse_xsd_schema(file_path: str, namespace: str) -> Dict:
-    tree = ET.parse(file_path)
+def parse_schema(xsd_file):
+    tree = ET.parse(xsd_file)
     root = tree.getroot()
-    schema = {}
+    namespace = {'xs': 'http://www.w3.org/2001/XMLSchema'}
+    return root, namespace
+
+def get_simple_type_info(simple_type):
+    namespace = {'xs': 'http://www.w3.org/2001/XMLSchema'}
+    restrictions = simple_type.find('.//xs:restriction', namespace)
+    if restrictions is None:
+        return "text", []
     
-    ns = {'xs': 'http://www.w3.org/2001/XMLSchema', 
-          'ns': namespace}
+    base = restrictions.get('base', '').split(':')[-1]
+    enums = restrictions.findall('.//xs:enumeration', namespace)
     
-    for complex_type in root.findall('.//xs:complexType', ns):
-        name = complex_type.get('name', '')
-        if name:
-            schema[name] = {
-                'type': 'complex',
-                'elements': []
-            }
-            
-            for seq in complex_type.findall('.//xs:sequence', ns):
-                for elem in seq.findall('xs:element', ns):
-                    elem_info = {
-                        'name': elem.get('name', ''),
-                        'type': elem.get('type', ''),
-                        'minOccurs': elem.get('minOccurs', '1'),
-                        'maxOccurs': elem.get('maxOccurs', '1')
-                    }
-                    schema[name]['elements'].append(elem_info)
-    
-    return schema
+    if enums:
+        return "select", [e.get('value') for e in enums]
+    elif base in ['string']:
+        return "text", []
+    elif base in ['integer', 'double', 'decimal']:
+        return "number", []
+    elif base in ['boolean']:
+        return "checkbox", []
+    elif base in ['date']:
+        return "date", []
+    return "text", []
 
 def generate_html():
-    hpxml_schema = parse_xsd_schema('HPXML.xsd', 'http://hpxmlonline.com/2023/09')
-    datatypes_schema = parse_xsd_schema('DataTypes.xsd', 'http://hpxmlonline.com/2023/09')
-    elements_schema = parse_xsd_schema('BaseElements.xsd', 'http://hpxmlonline.com/2023/09')
-    
-    html_content = """
-<!DOCTYPE html>
+    # Parse all schema files
+    hpxml_root, ns = parse_schema('HPXML.xsd')
+    types_root, _ = parse_schema('DataTypes.xsd')
+    base_root, _ = parse_schema('BaseElements.xsd')
+
+    html_content = '''<!DOCTYPE html>
 <html>
 <head>
-    <title>HPXML Form Generator</title>
+    <title>HPXML Form</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .tab { display: none; }
-        .tab.active { display: block; }
-        .tab-buttons button { padding: 10px; margin: 5px; }
-        .form-group { margin: 10px 0; }
-        label { display: block; margin-bottom: 5px; }
-        body { padding: 20px; font-family: Arial, sans-serif; }
+        .form-section { margin-bottom: 2rem; }
+        .card { margin-bottom: 1rem; }
     </style>
 </head>
 <body>
-    <h1>HPXML Form Generator</h1>
-    
-    <div class="tab-buttons">
-"""
-    
-    # Add tab buttons
-    for category in hpxml_schema:
-        html_content += f'        <button onclick="showTab(\'{category}\')">{category}</button>\n'
-    
-    html_content += """    </div>
+    <div class="container mt-5">
+        <h1 class="mb-4">HPXML Data Entry Form</h1>
+        <form id="hpxmlForm">'''
 
-    <form id="hpxmlForm" onsubmit="generateXML(event)">
-"""
-    
-    # Add form fields
-    for category, details in hpxml_schema.items():
-        html_content += f'        <div id="{category}" class="tab">\n'
-        html_content += f'            <h2>{category}</h2>\n'
-        if details.get('elements'):
-            for elem in details['elements']:
-                html_content += f'            <div class="form-group">\n'
-                html_content += f'                <label for="{elem["name"]}">{elem["name"]}</label>\n'
-                elem_type = elem['type'].replace('ns:', '')
-                if elem_type in datatypes_schema:
-                    if 'string' in str(datatypes_schema[elem_type]):
-                        html_content += f'                <input type="text" id="{elem["name"]}" name="{elem["name"]}">\n'
-                    elif 'integer' in str(datatypes_schema[elem_type]):
-                        html_content += f'                <input type="number" id="{elem["name"]}" name="{elem["name"]}" step="1">\n'
-                    elif 'double' in str(datatypes_schema[elem_type]):
-                        html_content += f'                <input type="number" id="{elem["name"]}" name="{elem["name"]}" step="0.01">\n'
-                    elif 'boolean' in str(datatypes_schema[elem_type]):
-                        html_content += f'                <input type="checkbox" id="{elem["name"]}" name="{elem["name"]}">\n'
-                    elif 'date' in str(datatypes_schema[elem_type]):
-                        html_content += f'                <input type="date" id="{elem["name"]}" name="{elem["name"]}">\n'
-                    else:
-                        html_content += f'                <input type="text" id="{elem["name"]}" name="{elem["name"]}">\n'
-                html_content += '            </div>\n'
-        html_content += '        </div>\n'
-    
-    html_content += """        <button type="submit">Generate HPXML</button>
-    </form>
+    # Process main categories from HPXML.xsd
+    for element in hpxml_root.findall('.//xs:element', ns):
+        name = element.get('name')
+        if name and name != 'HPXML':
+            html_content += f'''
+            <div class="card form-section">
+                <div class="card-header">
+                    <h3>{name}</h3>
+                </div>
+                <div class="card-body">'''
+            
+            # Process type definitions from DataTypes.xsd
+            complex_type = element.find('.//xs:complexType', ns)
+            if complex_type is not None:
+                for sub_element in complex_type.findall('.//xs:element', ns):
+                    sub_name = sub_element.get('name', '')
+                    type_name = sub_element.get('type', '').split(':')[-1]
+                    
+                    # Find corresponding simple type in DataTypes.xsd
+                    simple_type = types_root.find(f'.//xs:simpleType[@name="{type_name}_simple"]', ns)
+                    if simple_type is not None:
+                        input_type, options = get_simple_type_info(simple_type)
+                        
+                        if input_type == "select":
+                            html_content += f'''
+                            <div class="mb-3">
+                                <label for="{html.escape(sub_name)}" class="form-label">{html.escape(sub_name)}</label>
+                                <select class="form-select" id="{html.escape(sub_name)}" name="{html.escape(sub_name)}">
+                                    <option value="">Select...</option>'''
+                            for option in options:
+                                html_content += f'''
+                                    <option value="{html.escape(option)}">{html.escape(option)}</option>'''
+                            html_content += '''
+                                </select>
+                            </div>'''
+                        else:
+                            html_content += f'''
+                            <div class="mb-3">
+                                <label for="{html.escape(sub_name)}" class="form-label">{html.escape(sub_name)}</label>
+                                <input type="{input_type}" class="form-control" id="{html.escape(sub_name)}" name="{html.escape(sub_name)}">
+                            </div>'''
+            
+            html_content += '''
+                </div>
+            </div>'''
 
+    html_content += '''
+            <button type="submit" class="btn btn-primary">Generate HPXML</button>
+        </form>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function showTab(tabId) {
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.getElementById(tabId).classList.add('active');
-        }
-        
-        function generateXML(event) {
-            event.preventDefault();
-            const formData = new FormData(event.target);
-            let xmlContent = '<?xml version="1.0" encoding="UTF-8"?>\n<HPXML xmlns="http://hpxmlonline.com/2023/09">\n';
-            
-            for (let [name, value] of formData.entries()) {
-                if (value) {
-                    xmlContent += `  <${name}>${value}</${name}>\n`;
-                }
-            }
-            
-            xmlContent += '</HPXML>';
-            
-            const blob = new Blob([xmlContent], { type: 'text/xml' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'output.xml';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-        
-        // Show first tab by default
-        document.querySelector('.tab').classList.add('active');
+        document.getElementById('hpxmlForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            console.log('Form data:', data);
+            // Here you can add code to generate HPXML
+        });
     </script>
 </body>
-</html>
-"""
-    
+</html>'''
+
     with open('form.html', 'w+') as f:
         f.write(html_content)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     generate_html()
-    print("Form generated as form.html")

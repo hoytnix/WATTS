@@ -1,64 +1,71 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-    <title>HPXML Form Generator</title>
+    <title>HPXML Form</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .tab { display: none; }
-        .tab.active { display: block; }
-        .tab-buttons button { padding: 10px; margin: 5px; }
-        .form-group { margin: 10px 0; }
-        label { display: block; margin-bottom: 5px; }
-        body { padding: 20px; font-family: Arial, sans-serif; }
+        .form-section { margin-bottom: 2rem; }
+        .card { margin-bottom: 1rem; }
     </style>
 </head>
 <body>
-    <h1>HPXML Form Generator</h1>
-    
-    <div class="tab-buttons">
+    <div class="container mt-5">
+        <h1 class="mb-4">HPXML Data Entry Form</h1>
+        <form id="hpxmlForm">
+            <div class="card form-section">
+                <div class="card-header">
+                    <h3>Contractor</h3>
+                </div>
+                <div class="card-body">
+                </div>
+            </div>
+            <div class="card form-section">
+                <div class="card-header">
+                    <h3>Customer</h3>
+                </div>
+                <div class="card-body">
+                </div>
+            </div>
+            <div class="card form-section">
+                <div class="card-header">
+                    <h3>Building</h3>
+                </div>
+                <div class="card-body">
+                </div>
+            </div>
+            <div class="card form-section">
+                <div class="card-header">
+                    <h3>Project</h3>
+                </div>
+                <div class="card-body">
+                </div>
+            </div>
+            <div class="card form-section">
+                <div class="card-header">
+                    <h3>Utility</h3>
+                </div>
+                <div class="card-body">
+                </div>
+            </div>
+            <div class="card form-section">
+                <div class="card-header">
+                    <h3>Consumption</h3>
+                </div>
+                <div class="card-body">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Generate HPXML</button>
+        </form>
     </div>
-
-    <form id="hpxmlForm" onsubmit="generateXML(event)">
-        <button type="submit">Generate HPXML</button>
-    </form>
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function showTab(tabId) {
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.getElementById(tabId).classList.add('active');
-        }
-        
-        function generateXML(event) {
-            event.preventDefault();
-            const formData = new FormData(event.target);
-            let xmlContent = '<?xml version="1.0" encoding="UTF-8"?>
-<HPXML xmlns="http://hpxmlonline.com/2023/09">
-';
-            
-            for (let [name, value] of formData.entries()) {
-                if (value) {
-                    xmlContent += `  <${name}>${value}</${name}>
-`;
-                }
-            }
-            
-            xmlContent += '</HPXML>';
-            
-            const blob = new Blob([xmlContent], { type: 'text/xml' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'output.xml';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-        
-        // Show first tab by default
-        document.querySelector('.tab').classList.add('active');
+        document.getElementById('hpxmlForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            console.log('Form data:', data);
+            // Here you can add code to generate HPXML
+        });
     </script>
 </body>
 </html>

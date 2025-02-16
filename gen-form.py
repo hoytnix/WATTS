@@ -46,9 +46,9 @@ def generate_form():
         # Find complexType definition for this element
         type_name = elem.tag.split('}')[1]  # Get the tag name without the namespace
         if type_name:
-            # Find complexType definition in merged schema
+            # Find complexType definition in hpxml_root
             # Find the nested elements within the complexType
-            for type_def in base_elements_root.findall(f".//xs:complexType[@name='{type_name}']", ns):
+            for type_def in hpxml_root.findall(f".//xs:complexType[@name='{type_name}']", ns):
                 base_elements = type_def.findall(".//xs:element", ns)
                 for base_elem in base_elements:
                     # Discover the type of the element

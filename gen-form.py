@@ -7,7 +7,7 @@ def parse_xsd(filepath):
 
 def generate_form():
     # Parse the XSD files
-    hpxml_root = parse_xsd('HPXMLMerged.xsd')
+    hpxml_root = parse_xsd('HPXML.xsd')
     # types_root = parse_xsd('DataTypes.xsd') # No longer needed
     # base_root = parse_xsd('BaseElements.xsd') # No longer needed
     

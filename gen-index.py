@@ -15,5 +15,5 @@ template = Template(template_content)
 output_html = template.render(form_html=form_html)
 
 # Write the result to a new file
-with open('index.html', 'w+') as file:
+with open('test2.html', 'w+') as file:
     file.write(output_html)

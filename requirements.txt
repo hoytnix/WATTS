@@ -1,2 +1,2 @@
-hescore-hpxml
+hescorehpxml
 hpxml-version-translator

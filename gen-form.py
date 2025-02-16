@@ -10,7 +10,6 @@ def generate_form():
     hpxml_root = parse_xsd('HPXML.xsd')
     data_types_root = parse_xsd('DataTypes.xsd')
     base_elements_root = parse_xsd('BaseElements.xsd')
-    merged_root = parse_xsd('HPXMLMerged.xsd')
     
     # Extract namespaces
     ns = {'xs': 'http://www.w3.org/2001/XMLSchema'}
@@ -48,9 +47,8 @@ def generate_form():
         type_name = elem.tag.split('}')[1]  # Get the tag name without the namespace
         if type_name:
             # Find complexType definition in merged schema
-            type_def = merged_root.find(f".//xs:complexType[@name='{type_name}']", ns)
-            if type_def is not None:
-                # Find the nested elements within the complexType
+            # Find the nested elements within the complexType
+            for type_def in base_elements_root.findall(f".//xs:complexType[@name='{type_name}']", ns):
                 base_elements = type_def.findall(".//xs:element", ns)
                 for base_elem in base_elements:
                     # Discover the type of the element

@@ -8,9 +8,8 @@ def parse_xsd(filepath):
 
 def generate_form():
     # Parse the XSD files
-    hpxml_root = parse_xsd('HPXMLMerged.xsd')
-    data_types_root = parse_xsd('DataTypes.xsd')
-    base_elements_root = parse_xsd('BaseElements.xsd')
+    hpxml_root = parse_xsd('attached_assets/HPXMLMerged.xsd')
+    data_types_root = parse_xsd('attached_assets/DataTypes.xsd')
 
     # Extract namespaces
     ns = {'xs': 'http://www.w3.org/2001/XMLSchema'}
@@ -77,6 +76,7 @@ def process_element(base_elem, ns, data_types_root):
     html = ''
     label = base_elem.get('name', '')
     data_type = base_elem.get('type', '')
+
     input_type = "text"  # Default input type
 
     if data_type:
